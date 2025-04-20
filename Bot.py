@@ -1,43 +1,51 @@
 import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode
-from aiogram.utils import executor
-import os
+import requests
+from aiogram import Bot, Dispatcher, executor, types
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("Missing BOT_TOKEN environment variable")
-
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+API_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'  # <<< OVDJE UBACI SVOJ TELEGRAM TOKEN
+API_FOOTBALL_KEY = 'db82cf4e416995c1c91d954b32810510'
+API_FOOTBALL_HOST = 'https://v3.football.api-sports.io'
 
 logging.basicConfig(level=logging.INFO)
 
-def get_prediction():
-    return {
-        "match": "Real Madrid vs Barcelona",
-        "prediction": "BTTS (Both Teams To Score)",
-        "confidence": 81,
-        "odds": 1.92,
-        "kickoff": "20:45 CET"
-    }
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+
+headers = {
+    'x-apisports-key': API_FOOTBALL_KEY
+}
 
 @dp.message_handler(commands=['start'])
-async def start_cmd(message: types.Message):
-    await message.reply("Welcome to BetBot! Type /today to get today's prediction.")
+async def start_command(message: types.Message):
+    await message.reply("👋 Zdravo! Dobrodošao u Betting Bot. Pošalji /today da vidiš današnje utakmice!")
 
 @dp.message_handler(commands=['today'])
-async def today_cmd(message: types.Message):
-    tip = get_prediction()
-    response = (
-        f"*Today's Pick:*\n"
-        f"{tip['match']}\n"
-        f"*Prediction:* {tip['prediction']}\n"
-        f"*Confidence:* {tip['confidence']}%\n"
-        f"*Odds:* {tip['odds']}\n"
-        f"*Kickoff:* {tip['kickoff']}"
-    )
-    await message.answer(response, parse_mode=ParseMode.MARKDOWN)
+async def today_matches(message: types.Message):
+    from datetime import datetime
+    today = datetime.today().strftime('%Y-%m-%d')
+    url = f"{API_FOOTBALL_HOST}/fixtures?date={today}&timezone=Europe/Belgrade"
+
+    try:
+        response = requests.get(url, headers=headers)
+        data = response.json()
+
+        if 'response' not in data or not data['response']:
+            await message.reply("⚠️ Nema mečeva za danas.")
+            return
+
+        reply = "⚽ Današnje utakmice:\n\n"
+        for match in data['response'][:10]:  # samo prvih 10
+            home = match['teams']['home']['name']
+            away = match['teams']['away']['name']
+            league = match['league']['name']
+            time = match['fixture']['date'][11:16]
+            reply += f"🕒 {time} - {home} vs {away} ({league})\n"
+
+        await message.reply(reply)
+
+    except Exception as e:
+        await message.reply("❌ Greška pri dohvaćanju mečeva.")
+        logging.error(f"API Error: {e}")
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
