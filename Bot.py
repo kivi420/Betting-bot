@@ -2,7 +2,9 @@ import logging
 import requests
 from aiogram import Bot, Dispatcher, executor, types
 
-API_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'  # <<< OVDJE UBACI SVOJ TELEGRAM TOKEN
+API_TOKEN = 'import os
+API_TOKEN = os.getenv("API_TOKEN")
+'  # <<< OVDJE UBACI SVOJ TELEGRAM TOKEN
 API_FOOTBALL_KEY = 'db82cf4e416995c1c91d954b32810510'
 API_FOOTBALL_HOST = 'https://v3.football.api-sports.io'
 
